@@ -1,43 +1,90 @@
-using DynamicProfile;
+using System.Text.Json;
+using DotNetEnv;
+
+Env.Load();
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
+// Add services
+builder.Services.AddHttpClient();
+builder.Services.AddCors(options =>
+{
+    options.AddDefaultPolicy(policy =>
+    {
+        policy.AllowAnyOrigin()
+              .AllowAnyMethod()
+              .AllowAnyHeader();
+    });
+});
 builder.Services.AddAuthorization();
-
-// Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
 
 var app = builder.Build();
+var logger = app.Logger;
 
-// Configure the HTTP request pipeline.
+// Configure middleware
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
 }
 
 app.UseHttpsRedirection();
-
+app.UseCors();
 app.UseAuthorization();
 
-var summaries = new[]
+app.MapGet("/me", async (IHttpClientFactory httpClientFactory) =>
 {
-                "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
-            };
+    var httpClient = httpClientFactory.CreateClient();
+    httpClient.Timeout = TimeSpan.FromSeconds(5);
 
-app.MapGet("/weatherforecast", (HttpContext httpContext) =>
-{
-    var forecast = Enumerable.Range(1, 5).Select(index =>
-        new WeatherForecast
+    var email = Environment.GetEnvironmentVariable("EMAIL") ?? "your-email@example.com";
+    var name = Environment.GetEnvironmentVariable("NAME") ?? "Your Full Name";
+    var stack = Environment.GetEnvironmentVariable("STACK") ?? "Stack";
+
+    var timestamp = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss.fffZ"); 
+
+    try
+    {
+        var response = await httpClient.GetAsync("https://catfact.ninja/fact");
+        response.EnsureSuccessStatusCode();
+
+        var contentStream = await response.Content.ReadAsStreamAsync();
+        using var jsonDoc = await JsonDocument.ParseAsync(contentStream);
+        string catFact = jsonDoc.RootElement.GetProperty("fact").GetString() ?? "No fact available";
+
+        var result = new
         {
-            Date = DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
-            TemperatureC = Random.Shared.Next(-20, 55),
-            Summary = summaries[Random.Shared.Next(summaries.Length)]
-        })
-        .ToArray();
-    return forecast;
-})
-.WithName("GetWeatherForecast");
+            status = "success",
+            user = new
+            {
+                email,
+                name,
+                stack
+            },
+            timestamp,
+            fact = catFact
+        };
+
+        return Results.Json(result, statusCode: 200);
+    }
+    catch (Exception ex)
+    {
+        logger.LogError(ex, "Error fetching cat fact");
+        var result = new
+        {
+            status = "success",
+            user = new
+            {
+                email,
+                name,
+                stack
+            },
+            timestamp,
+            fact = "Cat facts are currently unavailable. Please try again later."
+        };
+
+        return Results.Json(result, statusCode: 200);
+    }
+});
 
 app.Run();
-

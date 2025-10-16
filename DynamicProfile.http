@@ -1,6 +1,6 @@
 @DynamicProfile_HostAddress = http://localhost:5024
 
-GET {{DynamicProfile_HostAddress}}/weatherforecast/
+GET {{DynamicProfile_HostAddress}}/me/
 Accept: application/json
 
 ###
