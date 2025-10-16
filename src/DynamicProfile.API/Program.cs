@@ -17,16 +17,9 @@ builder.Services.AddCors(options =>
     });
 });
 builder.Services.AddAuthorization();
-builder.Services.AddOpenApi();
 
 var app = builder.Build();
 var logger = app.Logger;
-
-// Configure middleware
-if (app.Environment.IsDevelopment())
-{
-    app.MapOpenApi();
-}
 
 app.UseHttpsRedirection();
 app.UseCors();
