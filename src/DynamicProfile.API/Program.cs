@@ -41,7 +41,7 @@ app.MapGet("/me", async (IHttpClientFactory httpClientFactory) =>
     var name = Environment.GetEnvironmentVariable("NAME") ?? "Your Full Name";
     var stack = Environment.GetEnvironmentVariable("STACK") ?? "Stack";
 
-    var timestamp = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss.fffZ"); 
+    var timestamp = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss.fffZ");
 
     try
     {
